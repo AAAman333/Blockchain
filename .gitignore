@@ -1,0 +1,17 @@
+# Foundry
+out/
+cache/
+broadcast/
+sync/
+artifacts/
+
+# Dependencies
+node_modules/
+lib/
+
+# Env
+.env
+.env.*
+
+# MacOS
+.DS_Store
