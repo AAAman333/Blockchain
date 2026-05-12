@@ -1,0 +1,19 @@
+name: Blockchain_Project_CI
+on: [push, pull_request]
+
+jobs:
+  test-and-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+      - name: Run Tests
+        run: forge test -vvv
+      - name: Slither Static Analysis
+        uses: crytic/slither-action@v0.3.0
+        with:
+          target: '.'
+          ignore-compile: true
