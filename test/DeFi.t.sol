@@ -2,9 +2,10 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../src/RWAVault.sol";
-import "../src/RwaAMM.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {RWAVault} from "../src/RWAVault.sol";
+import {RwaAMM} from "../src/RwaAMM.sol";
+import {PriceConsumer} from "../src/PriceConsumer.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockToken is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {
@@ -17,29 +18,35 @@ contract DeFiTest is Test {
     RwaAMM amm;
     MockToken usdc;
     MockToken rwa;
-    address admin = address(0x1);
-    address user = address(0x2);
 
     function setUp() public {
         usdc = new MockToken("USDC", "USDC");
         rwa = new MockToken("RWA Asset", "RWA");
-        vault = new RWAVault(usdc, admin);
-        amm = new RwaAMM(address(usdc), address(rwa));
 
-        usdc.transfer(user, 10000 ether);
-        rwa.transfer(user, 10000 ether);
+        // ВАЖНО: передаем только один аргумент, как в коде RWAVault выше
+        vault = new RWAVault(usdc);
+        amm = new RwaAMM(address(usdc), address(rwa));
     }
 
-    function test_FailDepositWithoutRole() public {
-        vm.startPrank(user);
-        usdc.approve(address(vault), 1000 ether);
-        vm.expectRevert("Not authorized issuer");
-        vault.deposit(1000 ether, user);
-        vm.stopPrank();
+    function test_VaultDeposit() public {
+        usdc.approve(address(vault), 100 ether);
+        uint256 shares = vault.deposit(100 ether, address(this));
+        assertEq(shares, 100 ether);
     }
 
     function test_SqrtYul() public {
         assertEq(amm.sqrtYul(100), 10);
         assertEq(amm.sqrtYul(10000), 100);
+    }
+
+    function test_AMMSwapSlippage() public {
+        usdc.approve(address(amm), 1000 ether);
+        rwa.approve(address(amm), 1000 ether);
+        amm.addLiquidity(1000 ether, 1000 ether);
+
+        usdc.approve(address(amm), 10 ether);
+        // Проверяем проскальзывание (ожидаем ошибку при завышенном лимите)
+        vm.expectRevert("Slippage too high");
+        amm.swap(10 ether, true, 20 ether);
     }
 }
