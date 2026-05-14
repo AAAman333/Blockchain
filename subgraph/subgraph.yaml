@@ -1,0 +1,27 @@
+specVersion: 0.0.2
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: ethereum/contract
+    name: RWAFactory
+    network: sepolia
+    source:
+      address: "0x0000000000000000000000000000000000000000"
+      abi: RWAFactory
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.5
+      language: wasm/assemblyscript
+      file: ./src/mappings.ts
+      entities:
+        - User
+        - Asset
+        - Vault
+        - Transaction
+      abis:
+        - name: RWAFactory
+          file: ./abis/RWAFactory.json
+      eventHandlers:
+        - event: Deployed(address,uint256)
+          handler: handleDeployed

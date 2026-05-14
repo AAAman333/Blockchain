@@ -1,0 +1,11 @@
+{
+  "name": "rwa-platform-subgraph",
+  "version": "0.1.0",
+  "private": true,
+  "devDependencies": {
+    "@graphprotocol/graph-cli": "^0.48.0"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-ts": "^0.41.0"
+  }
+}

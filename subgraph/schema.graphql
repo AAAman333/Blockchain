@@ -1,0 +1,31 @@
+type User @entity {
+  id: ID!
+  address: String!
+  createdAt: BigInt!
+  vaults: [Vault!]! @derivedFrom(field: "owner")
+}
+
+type Asset @entity {
+  id: ID!
+  token: String!
+  factory: String!
+  createdAt: BigInt!
+  method: Int!
+}
+
+type Vault @entity {
+  id: ID!
+  owner: User!
+  asset: Asset!
+  capacity: BigInt!
+  createdAt: BigInt!
+}
+
+type Transaction @entity {
+  id: ID!
+  from: User!
+  to: User!
+  asset: Asset!
+  amount: BigInt!
+  timestamp: BigInt!
+}
