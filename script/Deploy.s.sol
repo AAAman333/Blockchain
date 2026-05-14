@@ -39,7 +39,7 @@ contract Deploy is Script {
         RWAPlatform platform = new RWAPlatform();
         platform.initialize(deployer);
 
-        RWAFactory factory = new RWAFactory();
+        new RWAFactory();
 
         bytes32 DEFAULT_ADMIN_ROLE = bytes32(0);
         platform.grantRole(DEFAULT_ADMIN_ROLE, address(timelock));
