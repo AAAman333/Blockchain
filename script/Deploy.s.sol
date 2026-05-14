@@ -30,7 +30,7 @@ contract Deploy is Script {
 
         ProtocolGovernor governor = new ProtocolGovernor(
             IVotes(address(token)),
-            TimelockController(address(timelock))
+            TimelockController(payable(address(timelock)))
         );
 
         timelock.grantRole(timelock.PROPOSER_ROLE(), address(governor));

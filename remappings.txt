@@ -1,14 +1,11 @@
 @openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
-ds-test/=lib/openzeppelin-contracts-upgradeable/lib/forge-std/lib/ds-test/src/
-erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/
+chainlink-brownie-contracts/=lib/chainlink-brownie-contracts/
+ds-test/=lib/solmate/lib/ds-test/src/
+erc4626-tests/=lib/openzeppelin-contracts-upgradeable/lib/erc4626-tests/
 forge-std/=lib/forge-std/src/
 halmos-cheatcodes/=lib/openzeppelin-contracts/lib/halmos-cheatcodes/src/
 openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/
 openzeppelin-contracts/=lib/openzeppelin-contracts/
-@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
-<<<<<<< HEAD
-=======
-@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+solmate/=lib/solmate/src/
 @chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/
->>>>>>> f60b5dd47aaa3b64de4d7fba713806b64fb1bb17
