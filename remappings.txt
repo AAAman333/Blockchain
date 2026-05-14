@@ -7,3 +7,8 @@ halmos-cheatcodes/=lib/openzeppelin-contracts/lib/halmos-cheatcodes/src/
 openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/
 openzeppelin-contracts/=lib/openzeppelin-contracts/
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+<<<<<<< HEAD
+=======
+@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/
+>>>>>>> f60b5dd47aaa3b64de4d7fba713806b64fb1bb17
