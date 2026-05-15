@@ -3,22 +3,23 @@ import { Deployed } from '../generated/RWAFactory/RWAFactory'
 import { Asset, User } from '../generated/schema'
 
 export function handleDeployed(event: Deployed): void {
-  let senderId = event.transaction.from.toHex()
+  let senderId = event.transaction.from.toHexString()
   let user = User.load(senderId)
   if (user == null) {
     user = new User(senderId)
-    user.address = senderId
+    user.address = event.transaction.from.toHexString()
     user.createdAt = event.block.timestamp
     user.save()
   }
 
-  let asset = Asset.load(event.params.addr.toHex())
+  let assetId = event.params.addr.toHexString()
+  let asset = Asset.load(assetId)
   if (asset == null) {
-    asset = new Asset(event.params.addr.toHex())
+    asset = new Asset(assetId)
   }
 
-  asset.token = event.params.addr.toHex()
-  asset.factory = event.address.toHex()
+  asset.token = assetId
+  asset.factory = event.address.toHexString()
   asset.createdAt = event.block.timestamp
   asset.method = event.params.method.toI32()
   asset.save()

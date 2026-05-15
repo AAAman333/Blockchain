@@ -4,18 +4,26 @@ pragma solidity ^0.8.24;
 import "./RWAAsset.sol";
 
 contract RWAFactory {
-    event AssetDeployed(address assetAddress, uint256 method);
+    event Deployed(address addr, uint256 method);
+
+    address[] private _deployedTokens;
 
     function deployWithCreate(string memory name, string memory symbol) external returns (address) {
         RWAAsset newAsset = new RWAAsset(name, symbol, msg.sender);
-        emit AssetDeployed(address(newAsset), 1);
+        _deployedTokens.push(address(newAsset));
+        emit Deployed(address(newAsset), 1);
         return address(newAsset);
     }
 
     function deployWithCreate2(string memory name, string memory symbol, bytes32 salt) external returns (address) {
         RWAAsset newAsset = new RWAAsset{salt: salt}(name, symbol, msg.sender);
-        emit AssetDeployed(address(newAsset), 2);
+        _deployedTokens.push(address(newAsset));
+        emit Deployed(address(newAsset), 2);
         return address(newAsset);
+    }
+
+    function getDeployedTokens() external view returns (address[] memory) {
+        return _deployedTokens;
     }
 
     function getPrecomputedAddress(string memory name, string memory symbol, bytes32 salt) public view returns (address) {

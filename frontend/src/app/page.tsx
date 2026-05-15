@@ -15,10 +15,16 @@ export default function Page() {
             </p>
             <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
               <Link
-                href="/assets"
+                href="/dashboard"
                 className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
               >
-                Перейти в Assets
+                Governance Dashboard
+              </Link>
+              <Link
+                href="/assets"
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50"
+              >
+                Assets
               </Link>
               <span className="text-sm text-slate-500">или подключи кошелек прямо сейчас.</span>
             </div>

@@ -3,31 +3,24 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount, useBalance, useContractRead } from 'wagmi';
+import { useAccount, useBalance, useReadContract } from 'wagmi';
 import type { Address } from 'viem';
+import { factoryAbi } from '@/lib/abis';
 
 const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_FACTORY_ADDRESS as Address | undefined;
 const GOVERNANCE_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_GOVERNANCE_TOKEN_ADDRESS as Address | undefined;
 
-const factoryAbi = [
-  {
-    name: 'getDeployedTokens',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'address[]', name: '' }],
-  },
-] as const;
-
 export default function AssetsPage() {
   const { address, isConnected } = useAccount();
 
-  const tokensRead = useContractRead({
+  const tokensRead = useReadContract({
     address: FACTORY_ADDRESS,
     abi: factoryAbi,
     functionName: 'getDeployedTokens',
-    watch: true,
-    enabled: Boolean(FACTORY_ADDRESS),
+    query: {
+      enabled: Boolean(FACTORY_ADDRESS),
+      refetchInterval: 10_000,
+    },
   });
 
   const deployedTokens = (tokensRead.data as Address[] | undefined) ?? [];
@@ -36,8 +29,10 @@ export default function AssetsPage() {
   const balanceRead = useBalance({
     address: address as Address,
     token: governanceTokenAddress,
-    watch: true,
-    enabled: Boolean(address && governanceTokenAddress),
+    query: {
+      enabled: Boolean(address && governanceTokenAddress),
+      refetchInterval: 10_000,
+    },
   });
 
   useEffect(() => {

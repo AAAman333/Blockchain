@@ -1,27 +1,49 @@
-specVersion: 0.0.2
+specVersion: 0.0.5
 schema:
   file: ./schema.graphql
 
 dataSources:
   - kind: ethereum/contract
     name: RWAFactory
-    network: sepolia
+    network: base-sepolia
     source:
       address: "0x0000000000000000000000000000000000000000"
       abi: RWAFactory
+      startBlock: 0
     mapping:
       kind: ethereum/events
-      apiVersion: 0.0.5
+      apiVersion: 0.0.7
       language: wasm/assemblyscript
-      file: ./src/mappings.ts
       entities:
         - User
         - Asset
-        - Vault
-        - Transaction
       abis:
         - name: RWAFactory
           file: ./abis/RWAFactory.json
       eventHandlers:
         - event: Deployed(address,uint256)
           handler: handleDeployed
+      file: ./src/mappings.ts
+
+  - kind: ethereum/contract
+    name: ProtocolGovernor
+    network: base-sepolia
+    source:
+      address: "0x0000000000000000000000000000000000000000"
+      abi: ProtocolGovernor
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Proposal
+      abis:
+        - name: ProtocolGovernor
+          file: ./abis/ProtocolGovernor.json
+      eventHandlers:
+        - event: ProposalCreated(uint256,address,address[],uint256[],string[],bytes[],uint256,uint256,string)
+          handler: handleProposalCreated
+        - event: ProposalExecuted(uint256)
+          handler: handleProposalExecuted
+      file: ./src/governor.ts
