@@ -5,10 +5,21 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+<<<<<<< HEAD
 
 contract RWAPlatform is Initializable, UUPSUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
     bytes32 public constant ASSET_MANAGER_ROLE = keccak256("ASSET_MANAGER_ROLE");
+=======
+contract RWAPlatform is
+    Initializable,
+    UUPSUpgradeable,
+    AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable
+{
+    bytes32 public constant UPGRADER_ROLE =
+        keccak256("UPGRADER_ROLE");
+>>>>>>> 414ee81 (Fix paths, configure remappings, update RWAVault constructors and fix DeFi tests)
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {

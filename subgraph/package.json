@@ -2,10 +2,17 @@
   "name": "rwa-platform-subgraph",
   "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "create-local": "graph create --node http://localhost:8020/ rwa-platform",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 rwa-platform",
+    "deploy": "graph deploy --studio rwa-platform"
+  },
   "devDependencies": {
-    "@graphprotocol/graph-cli": "^0.48.0"
+    "@graphprotocol/graph-cli": "^0.97.0"
   },
   "dependencies": {
-    "@graphprotocol/graph-ts": "^0.41.0"
+    "@graphprotocol/graph-ts": "^0.35.1"
   }
 }

@@ -29,3 +29,14 @@ type Transaction @entity {
   amount: BigInt!
   timestamp: BigInt!
 }
+
+type Proposal @entity {
+  id: ID!
+  proposalId: BigInt!
+  proposer: String!
+  description: String!
+  voteStart: BigInt!
+  voteEnd: BigInt!
+  createdAt: BigInt!
+  executed: Boolean!
+}

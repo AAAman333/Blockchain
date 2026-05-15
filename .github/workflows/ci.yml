@@ -10,10 +10,12 @@ jobs:
           submodules: recursive
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+      - name: Install Solc 0.8.24
+        run: forge solc install 0.8.24
       - name: Run Tests
         run: forge test -vvv
       - name: Slither Static Analysis
         uses: crytic/slither-action@v0.3.0
         with:
-          target: '.'
-          ignore-compile: true
+          target: "."
+          slither-args: "--config-file slither.config.json"
