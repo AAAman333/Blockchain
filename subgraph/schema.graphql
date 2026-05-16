@@ -1,8 +1,7 @@
-type User @entity {
+﻿type User @entity {
   id: ID!
   address: String!
   createdAt: BigInt!
-  vaults: [Vault!]! @derivedFrom(field: "owner")
 }
 
 type Asset @entity {
@@ -13,34 +12,10 @@ type Asset @entity {
   method: Int!
 }
 
-type Vault @entity {
-  id: ID!
-  owner: User!
-  asset: Asset!
-  capacity: BigInt!
-  createdAt: BigInt!
-}
-
-type Transaction @entity {
-  id: ID!
-  from: User!
-  to: User!
-  asset: Asset!
-  amount: BigInt!
-  timestamp: BigInt!
-}
-
 type Proposal @entity {
   id: ID!
   proposalId: BigInt!
   proposer: String!
-<<<<<<< HEAD
-  description: String!
-  voteStart: BigInt!
-  voteEnd: BigInt!
-  createdAt: BigInt!
-  executed: Boolean!
-=======
   description: String
   startBlock: BigInt!
   endBlock: BigInt!
@@ -50,5 +25,15 @@ type Proposal @entity {
   targets: [String!]!
   values: [BigInt!]!
   calldatas: [String!]!
->>>>>>> d6aae22 (adresses)
+}
+
+type Deposit @entity {
+  id: ID!
+  caller: String!
+  owner: String!
+  vault: String!
+  assets: BigInt!
+  shares: BigInt!
+  createdAt: BigInt!
+  transaction: String!
 }

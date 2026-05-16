@@ -1,10 +1,6 @@
 {
-<<<<<<< HEAD
-  "filter_paths": "src/security",
-  "exclude_informational": false
-=======
   "exclude_paths": [
     "src/security/*"
-  ]
->>>>>>> d6aae22 (adresses)
+  ],
+  "exclude_informational": true
 }

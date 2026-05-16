@@ -1,4 +1,4 @@
-specVersion: 0.0.5
+﻿specVersion: 0.0.5
 schema:
   file: ./schema.graphql
 
@@ -17,19 +17,35 @@ dataSources:
       entities:
         - User
         - Asset
-<<<<<<< HEAD
-=======
-        - Vault
-        - Transaction
         - Proposal
->>>>>>> d6aae22 (adresses)
+        - Deposit
       abis:
         - name: RWAFactory
           file: ./abis/RWAFactory.json
       eventHandlers:
-<<<<<<< HEAD
-        - event: Deployed(address,uint256)
-          handler: handleDeployed
+        - event: AssetDeployed(address,uint256)
+          handler: handleAssetDeployed
+      file: ./src/mappings.ts
+
+  - kind: ethereum/contract
+    name: RWAVault
+    network: base-sepolia
+    source:
+      address: "0x0000000000000000000000000000000000000000"
+      abi: RWAVault
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Deposit
+      abis:
+        - name: RWAVault
+          file: ./abis/RWAVault.json
+      eventHandlers:
+        - event: Deposit(address,address,uint256,uint256)
+          handler: handleVaultDeposit
       file: ./src/mappings.ts
 
   - kind: ethereum/contract
@@ -43,22 +59,7 @@ dataSources:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
-=======
-        - event: AssetDeployed(address,uint256)
-          handler: handleAssetDeployed
-
-  - kind: ethereum/contract
-    name: ProtocolGovernor
-    network: sepolia
-    source:
-      address: "0x0000000000000000000000000000000000000000"
-      abi: ProtocolGovernor
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.5
-      language: wasm/assemblyscript
       file: ./src/mappings.ts
->>>>>>> d6aae22 (adresses)
       entities:
         - Proposal
       abis:
@@ -69,7 +70,3 @@ dataSources:
           handler: handleProposalCreated
         - event: ProposalExecuted(uint256)
           handler: handleProposalExecuted
-<<<<<<< HEAD
-      file: ./src/governor.ts
-=======
->>>>>>> d6aae22 (adresses)

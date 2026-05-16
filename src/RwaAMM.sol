@@ -59,19 +59,11 @@ contract RwaAMM is ReentrancyGuard {
         reserve1 = token1.balanceOf(address(this));
     }
 
-<<<<<<< HEAD
-    function addLiquidity(uint256 amount0, uint256 amount1) external {
+    function addLiquidity(uint256 amount0, uint256 amount1) external nonReentrant {
         token0.safeTransferFrom(msg.sender, address(this), amount0);
         token1.safeTransferFrom(msg.sender, address(this), amount1);
-=======
-    function addLiquidity(uint256 amount0, uint256 amount1) external nonReentrant {
-        token0.transferFrom(msg.sender, address(this), amount0);
-        token1.transferFrom(msg.sender, address(this), amount1);
-
-        lpProviders[msg.sender] += (amount0 + amount1);
-
->>>>>>> 414ee81 (Fix paths, configure remappings, update RWAVault constructors and fix DeFi tests)
+        lpProviders[msg.sender] += amount0 + amount1;
         reserve0 = token0.balanceOf(address(this));
-        reserve1 = token1.balanceOf(address(this)); 
+        reserve1 = token1.balanceOf(address(this));
     }
 }

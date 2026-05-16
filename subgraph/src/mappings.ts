@@ -1,28 +1,5 @@
-import { Address, BigInt, Entity, ethereum, store, Value } from '@graphprotocol/graph-ts'
+﻿import { Address, BigInt, Entity, ethereum, store, Value } from '@graphprotocol/graph-ts'
 
-<<<<<<< HEAD
-export function handleDeployed(event: Deployed): void {
-  let senderId = event.transaction.from.toHexString()
-  let user = User.load(senderId)
-  if (user == null) {
-    user = new User(senderId)
-    user.address = event.transaction.from.toHexString()
-    user.createdAt = event.block.timestamp
-    user.save()
-  }
-
-  let assetId = event.params.addr.toHexString()
-  let asset = Asset.load(assetId)
-  if (asset == null) {
-    asset = new Asset(assetId)
-  }
-
-  asset.token = assetId
-  asset.factory = event.address.toHexString()
-  asset.createdAt = event.block.timestamp
-  asset.method = event.params.method.toI32()
-  asset.save()
-=======
 function loadOrCreateUser(senderId: string, createdAt: BigInt): Entity {
   let user = store.get('User', senderId)
   if (user == null) {
@@ -36,7 +13,7 @@ function loadOrCreateUser(senderId: string, createdAt: BigInt): Entity {
 }
 
 export function handleAssetDeployed(event: ethereum.Event): void {
-  let senderId = event.transaction.from.toHex()
+  let senderId = event.transaction.from.toHexString()
   loadOrCreateUser(senderId, event.block.timestamp)
 
   let assetId = event.parameters[0].value.toAddress().toHexString()
@@ -88,5 +65,20 @@ export function handleProposalExecuted(event: ethereum.Event): void {
     proposal.set('executed', Value.fromBoolean(true))
     store.set('Proposal', id, proposal)
   }
->>>>>>> d6aae22 (adresses)
+}
+
+export function handleVaultDeposit(event: ethereum.Event): void {
+  let depositId = event.transaction.hash.toHexString().concat('-').concat(event.logIndex.toString())
+  let deposit = new Entity()
+
+  deposit.set('id', Value.fromString(depositId))
+  deposit.set('caller', Value.fromString(event.parameters[0].value.toAddress().toHexString()))
+  deposit.set('owner', Value.fromString(event.parameters[1].value.toAddress().toHexString()))
+  deposit.set('vault', Value.fromString(event.address.toHexString()))
+  deposit.set('assets', Value.fromBigInt(event.parameters[2].value.toBigInt()))
+  deposit.set('shares', Value.fromBigInt(event.parameters[3].value.toBigInt()))
+  deposit.set('createdAt', Value.fromBigInt(event.block.timestamp))
+  deposit.set('transaction', Value.fromString(event.transaction.hash.toHexString()))
+
+  store.set('Deposit', depositId, deposit)
 }
