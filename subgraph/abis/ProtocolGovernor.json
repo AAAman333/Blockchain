@@ -8,8 +8,13 @@
       { "indexed": false, "internalType": "uint256[]", "name": "values", "type": "uint256[]" },
       { "indexed": false, "internalType": "string[]", "name": "signatures", "type": "string[]" },
       { "indexed": false, "internalType": "bytes[]", "name": "calldatas", "type": "bytes[]" },
+<<<<<<< HEAD
       { "indexed": false, "internalType": "uint256", "name": "voteStart", "type": "uint256" },
       { "indexed": false, "internalType": "uint256", "name": "voteEnd", "type": "uint256" },
+=======
+      { "indexed": false, "internalType": "uint256", "name": "startBlock", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "endBlock", "type": "uint256" },
+>>>>>>> d6aae22 (adresses)
       { "indexed": false, "internalType": "string", "name": "description", "type": "string" }
     ],
     "name": "ProposalCreated",
@@ -22,6 +27,7 @@
     ],
     "name": "ProposalExecuted",
     "type": "event"
+<<<<<<< HEAD
   },
   {
     "inputs": [{ "internalType": "uint256", "name": "proposalId", "type": "uint256" }],
@@ -29,5 +35,7 @@
     "outputs": [{ "internalType": "enum IGovernor.ProposalState", "name": "", "type": "uint8" }],
     "stateMutability": "view",
     "type": "function"
+=======
+>>>>>>> d6aae22 (adresses)
   }
 ]

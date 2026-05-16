@@ -34,9 +34,21 @@ type Proposal @entity {
   id: ID!
   proposalId: BigInt!
   proposer: String!
+<<<<<<< HEAD
   description: String!
   voteStart: BigInt!
   voteEnd: BigInt!
   createdAt: BigInt!
   executed: Boolean!
+=======
+  description: String
+  startBlock: BigInt!
+  endBlock: BigInt!
+  executed: Boolean!
+  createdAt: BigInt!
+  governor: String!
+  targets: [String!]!
+  values: [BigInt!]!
+  calldatas: [String!]!
+>>>>>>> d6aae22 (adresses)
 }

@@ -26,7 +26,12 @@ export default function Page() {
               >
                 Assets
               </Link>
-              <span className="text-sm text-slate-500">или подключи кошелек прямо сейчас.</span>
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center rounded-2xl bg-slate-100 px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-200"
+              >
+                Dashboard
+              </Link>
             </div>
           </div>
 

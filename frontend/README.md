@@ -20,6 +20,15 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Env variables
+
+Copy `.env.example` to `.env.local` and set the real contract addresses and subgraph endpoint:
+
+- `NEXT_PUBLIC_FACTORY_ADDRESS` — адрес развернутой `RWAFactory`
+- `NEXT_PUBLIC_GOVERNANCE_TOKEN_ADDRESS` — адрес `GovernanceToken`
+- `NEXT_PUBLIC_GOVERNOR_ADDRESS` — адрес `ProtocolGovernor`
+- `NEXT_PUBLIC_SUBGRAPH_URL` — URL вашего Graph сабграфа
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
