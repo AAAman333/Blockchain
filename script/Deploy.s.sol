@@ -3,7 +3,8 @@ pragma solidity ^0.8.24;
 
 import {Script} from "../lib/forge-std/src/Script.sol";
 import "../lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
-import "../lib/openzeppelin-contracts/contracts/governance/extensions/GovernorVotes.sol";
+import {IVotes} from "../lib/openzeppelin-contracts/contracts/governance/utils/IVotes.sol";
+import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {GovernanceToken} from "../src/GovernanceToken.sol";
 import {ProtocolTimelock} from "../src/Timelock.sol";
 import {ProtocolGovernor} from "../src/ProtocolGovernor.sol";
@@ -36,10 +37,17 @@ contract Deploy is Script {
         timelock.grantRole(timelock.PROPOSER_ROLE(), address(governor));
         timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
 
-        RWAPlatform platform = new RWAPlatform();
-        platform.initialize(deployer);
+ 
+        bytes memory initData = abi.encodeWithSelector(
+            RWAPlatform.initialize.selector,
+            deployer
+        );
 
-        new RWAFactory();
+        ERC1967Proxy proxy = new ERC1967Proxy(address(platformImpl), initData);
+       
+        RWAPlatform platform = RWAPlatform(address(proxy));
+
+        RWAFactory factory = new RWAFactory();
 
         bytes32 DEFAULT_ADMIN_ROLE = bytes32(0);
         platform.grantRole(DEFAULT_ADMIN_ROLE, address(timelock));

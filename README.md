@@ -1,110 +1,140 @@
-﻿# Blockchain Project
+# Blockchain Project
 
-Проект включает:
-- Foundry смарт-контракты на Solidity
-- Next.js фронтенд на RainbowKit + wagmi
-- The Graph сабграф для индексации событий
-- CI с Forge, Slither и проверкой submodules
+A Foundry-based smart contract monorepo with a Next.js frontend (RainbowKit + wagmi) and a The Graph subgraph for indexing on-chain events.
 
-## Текущая реализация
+## Key Features
 
-- `RWAFactory` индексирует созданные активы
-- `RWAVault` индексирует депозиты в vault
-- `ProtocolGovernor` индексирует создание и исполнение предложений
-- Фронтенд подключает кошелек и показывает баланс GovernanceToken
-- На странице `Assets` есть кнопки `Swap` и `Deposit to Vault`
-- На странице `Dashboard` есть кнопки `Vote For`, `Vote Against`, `Abstain`
+- Solidity contracts developed and tested with Foundry
+- Frontend using Next.js, Wagmi and RainbowKit for wallet integration
+- The Graph subgraph for indexing core events
+- CI that runs formatting, tests, build, and static analysis (Slither)
 
-## Контракты и сети
+## Contracts & Addresses
 
-| Контракт | Адрес | Сеть | Explorer |
+> Update the table below after deployment and verification.
+
+| Contract | Address | Network | Explorer |
 | --- | --- | --- | --- |
-| RWAFactory | `0xDB8Cff278aDccF9e9B5DA745b44E754FC4ee3c76` | Base Sepolia / Arbitrum Sepolia | `https://sepolia.basescan.org/address/0xDB8Cff278aDccF9e9B5DA745b44E754FC4ee3c76` |
-| GovernanceToken | `0x5B73C5498C1e3b4DBA84DE0F1833C4A029d90519` | Base Sepolia / Arbitrum Sepolia | `https://sepolia.basescan.org/address/0x5B73C5498C1e3b4DBA84DE0F1833C4A029d90519` |
-| ProtocolGovernor | `TBD` | Base Sepolia / Arbitrum Sepolia | `TBD` |
-| RWAVault | `TBD` | Base Sepolia / Arbitrum Sepolia | `TBD` |
-| AMM | `TBD` | Base Sepolia / Arbitrum Sepolia | `TBD` |
+| RWAFactory | 0xDB8Cff278aDccF9e9B5DA745b44E754FC4ee3c76 | Base Sepolia / Arbitrum Sepolia | https://sepolia.basescan.org/address/0xDB8Cff278aDccF9e9B5DA745b44E754FC4ee3c76 |
+| GovernanceToken | 0x5B73C5498C1e3b4DBA84DE0F1833C4A029d90519 | Base Sepolia / Arbitrum Sepolia | https://sepolia.basescan.org/address/0x5B73C5498C1e3b4DBA84DE0F1833C4A029d90519 |
+| ProtocolGovernor | TBD | Base Sepolia / Arbitrum Sepolia | TBD |
+| RWAVault | TBD | Base Sepolia / Arbitrum Sepolia | TBD |
+| AMM | TBD | Base Sepolia / Arbitrum Sepolia | TBD |
 
-> Замените `TBD` после деплоя и верификации контрактов в соответствующем исследователе.
 
-## Быстрый старт
+## Quickstart (Developer)
 
-### 1. Установите зависимости
+Prerequisites:
+- Git
+- Foundry (forge, cast)
+- Node.js (16+)
+- npm or pnpm
+
+1) Install Foundry
 
 ```bash
-# В корне проекта
+# Linux / macOS (recommended)
+curl -L https://foundry.paradigm.xyz | bash
+source $HOME/.bashrc # or restart shell
+foundryup
+
+# Windows (WSL recommended) — follow Foundry docs: https://github.com/foundry-rs/foundry
+```
+
+2) Install repo dependencies
+
+```bash
+# Install Solidity dependencies
 forge install
 
-# В фронтенде
+# Frontend
 cd frontend
+npm install
+
+# Subgraph
+cd ../subgraph
 npm install
 ```
 
-### 2. Настройки окружения
+3) Configure environment variables
 
-Создайте `frontend/.env.local` и заполните адреса контрактов:
+Create `frontend/.env.local` and set contract addresses and endpoints:
 
-```env
-NEXT_PUBLIC_FACTORY_ADDRESS=0xDB8Cff278aDccF9e9B5DA745b44E754FC4ee3c76
-NEXT_PUBLIC_GOVERNANCE_TOKEN_ADDRESS=0x5B73C5498C1e3b4DBA84DE0F1833C4A029d90519
+```
+NEXT_PUBLIC_FACTORY_ADDRESS=0x...
+NEXT_PUBLIC_GOVERNANCE_TOKEN_ADDRESS=0x...
 NEXT_PUBLIC_GOVERNOR_ADDRESS=0x...
 NEXT_PUBLIC_VAULT_ADDRESS=0x...
 NEXT_PUBLIC_AMM_ADDRESS=0x...
 NEXT_PUBLIC_SUBGRAPH_URL=https://api.thegraph.com/subgraphs/name/<your-subgraph>
 ```
 
-### 3. Запуск проекта
+4) Build & Run
 
 ```bash
-# Собрать смарт-контракты
+# Build contracts
 forge build
 
-# Запустить фронтенд
+# Run frontend
 cd frontend
 npm run dev
 ```
 
-### 4. Тесты и CI
+## Tests and Formatting
+
+Run tests and formatting checks locally before pushing:
 
 ```bash
-forge test
 forge fmt --check
+forge test -vvv
 ```
 
-GitHub Actions уже настроен в `.github/workflows/test.yml` с `submodules: recursive`.
-Slither игнорирует папку `src/security/*` через `slither.config.json`.
+CI workflows are defined in `.github/workflows/ci.yml` and `.github/workflows/test.yml` and already include `submodules: recursive` for `actions/checkout`.
 
-## Сабграф
+## Static Analysis (Slither)
 
-Сабграф находится в папке `subgraph`.
+Slither config is in `slither.config.json`. The repository excludes `src/security` from the default analysis to avoid noise. CI currently marks the Slither step as non-blocking to prevent CI failures while issues are triaged.
+
+To run Slither locally (optional):
+
+```bash
+pip3 install slither-analyzer
+slither . --config-file slither.config.json
+```
+
+## Subgraph
+
+The subgraph is located in the `subgraph` directory.
 
 ```bash
 cd subgraph
-npm install
 npm run codegen
 npm run build
+# For local Graph Node testing, follow The Graph docs
 ```
 
-В `subgraph/subgraph.yaml` настроены индексация:
-- `AssetDeployed` — создание новых активов
-- `Deposit` — депозиты в `RWAVault`
-- `ProposalCreated` / `ProposalExecuted` — DAO предложения
+Indexed events (examples): `AssetDeployed`, `Deposit`, `ProposalCreated`, `ProposalExecuted`.
 
-## Деплой на Base Sepolia / Arbitrum Sepolia
+## Deployment
+
+Deploy contracts using `forge script` with your RPC and private key:
 
 ```bash
-forge script script/Deploy.s.sol:Deploy --rpc-url <YOUR_RPC_URL> --private-key <YOUR_PRIVATE_KEY> --broadcast
+forge script script/Deploy.s.sol:Deploy --rpc-url <RPC_URL> --private-key <PRIVATE_KEY> --broadcast
 ```
 
-Для Base Sepolia используйте RPC вида: `https://sepolia.base.org` или свой провайдер.
-Для Arbitrum Sepolia используйте RPC, предоставленный Arbitrum.
+Replace `<RPC_URL>` and `<PRIVATE_KEY>` with your values. After deployment, verify contracts on the destination explorer and update the table above.
 
-## Верификация контрактов
+## Verification
 
-После успешного деплоя выполните верификацию через Etherscan / BaseScan / Arbiscan:
+Example verify command (adjust chain and contract names):
 
 ```bash
 forge verify-contract --chain <chain> <contract_address> <contract_name> --compiler-version 0.8.24
 ```
 
-Затем обновите таблицу адресов и ссылки в этом README.
+## Contributing
+
+- Run `forge fmt` and `forge test` before opening PRs
+- Keep tests deterministic and fast
+- Update the address table and `frontend/.env.local` after deployments

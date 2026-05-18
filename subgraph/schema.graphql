@@ -16,7 +16,7 @@ type Proposal @entity {
   id: ID!
   proposalId: BigInt!
   proposer: String!
-  description: String
+  description: String!
   startBlock: BigInt!
   endBlock: BigInt!
   executed: Boolean!

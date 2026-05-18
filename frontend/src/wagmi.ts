@@ -8,7 +8,7 @@ export const config = getDefaultConfig({
   projectId: '95666f913d33939634f19b8893126f5d',
   chains: [baseSepolia],
   transports: {
-    [baseSepolia.id]: http(),
+    [baseSepolia.id]: http('https://base-sepolia.g.alchemy.com/v2/Q7DYGQkg18X5X5rD_Km24'),
   },
   ssr: true,
 });

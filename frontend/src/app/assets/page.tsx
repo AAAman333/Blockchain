@@ -1,259 +1,112 @@
 ﻿'use client';
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import {
-  useAccount,
-  useBalance,
-  useContractRead,
-  usePrepareContractWrite,
-  useContractWrite,
-} from 'wagmi';
-import { parseEther } from 'viem';
-import type { Address } from 'viem';
-import { factoryAbi, vaultAbi, ammAbi } from '@/lib/abis';
+import { useState } from 'react';
+import { useReadContract, useWriteContract, useAccount } from 'wagmi';
+import { factoryAbi } from '../../abi'; 
 
-const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_FACTORY_ADDRESS as Address | undefined;
-const GOVERNANCE_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_GOVERNANCE_TOKEN_ADDRESS as Address | undefined;
-const VAULT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS as Address | undefined;
-const AMM_ADDRESS = process.env.NEXT_PUBLIC_AMM_ADDRESS as Address | undefined;
-
-function parseAmount(value: string) {
-  try {
-    return parseEther(value);
-  } catch {
-    return undefined;
-  }
-}
+const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_FACTORY_ADDRESS as `0x${string}`;
 
 export default function AssetsPage() {
-  const { address, isConnected } = useAccount();
-  const [swapAmount, setSwapAmount] = useState('0.01');
-  const [depositAmount, setDepositAmount] = useState('0.01');
-  const [swapDirection, setSwapDirection] = useState<'0to1' | '1to0'>('0to1');
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const { isConnected } = useAccount();
+  const [name, setName] = useState('');
+  const [symbol, setSymbol] = useState('');
+  const { writeContract, isPending } = useWriteContract();
 
-  const tokensRead = useContractRead({
-    address: FACTORY_ADDRESS,
+  const { data: deployedTokens, refetch } = useReadContract({
     abi: factoryAbi,
+    address: FACTORY_ADDRESS,
     functionName: 'getDeployedTokens',
-    watch: true,
-    enabled: Boolean(FACTORY_ADDRESS),
   });
 
-  const deployedTokens = (tokensRead.data as Address[] | undefined) ?? [];
-  const governanceTokenAddress = GOVERNANCE_TOKEN_ADDRESS ?? deployedTokens[0];
+  const handleDeploy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !symbol) return;
 
-  const balanceRead = useBalance({
-    address: address as Address,
-    token: governanceTokenAddress,
-    watch: true,
-    enabled: isConnected && Boolean(address && governanceTokenAddress),
-  });
-
-  const parsedSwapAmount = parseAmount(swapAmount);
-  const parsedDepositAmount = parseAmount(depositAmount);
-
-  const prepareSwap = usePrepareContractWrite({
-    address: AMM_ADDRESS,
-    abi: ammAbi,
-    functionName: 'swap',
-    args:
-      AMM_ADDRESS && parsedSwapAmount !== undefined && isConnected && address
-        ? [parsedSwapAmount, swapDirection === '0to1', 0n]
-        : undefined,
-    enabled: Boolean(AMM_ADDRESS && parsedSwapAmount !== undefined && isConnected && address),
-  });
-
-  const swapWrite = useContractWrite(prepareSwap.config);
-
-  const prepareDeposit = usePrepareContractWrite({
-    address: VAULT_ADDRESS,
-    abi: vaultAbi,
-    functionName: 'deposit',
-    args: VAULT_ADDRESS && parsedDepositAmount !== undefined && isConnected && address ? [parsedDepositAmount, address as Address] : undefined,
-    enabled: Boolean(VAULT_ADDRESS && parsedDepositAmount !== undefined && isConnected && address),
-  });
-
-  const depositWrite = useContractWrite(prepareDeposit.config);
-
-  const isSwapDisabled = !isConnected || !AMM_ADDRESS || !parsedSwapAmount || !swapWrite.write;
-  const isDepositDisabled = !isConnected || !VAULT_ADDRESS || !parsedDepositAmount || !depositWrite.write;
-
-  useEffect(() => {
-    if (!FACTORY_ADDRESS) {
-      console.warn('Set NEXT_PUBLIC_FACTORY_ADDRESS in frontend/.env.local to enable token listing.')
-    }
-  }, []);
-
-  async function handleSwap() {
-    setActionMessage('Подтвердите swap в кошельке...');
-
-    try {
-      if (swapWrite.writeAsync) {
-        await swapWrite.writeAsync();
-      } else {
-        swapWrite.write?.();
+    writeContract({
+      abi: factoryAbi,
+      address: FACTORY_ADDRESS,
+      functionName: 'deployWithCreate',
+      args: [name, symbol],
+    }, {
+      onSuccess: () => {
+        setName('');
+        setSymbol('');
+        setTimeout(() => refetch(), 4000);
       }
-      setActionMessage('Swap отправлен. Подождите подтверждение транзакции.');
-    } catch (error) {
-      setActionMessage(error instanceof Error ? error.message : 'Ошибка swap.');
-    }
-  }
-
-  async function handleDeposit() {
-    setActionMessage('Подтвердите депозит в кошельке...');
-
-    try {
-      if (depositWrite.writeAsync) {
-        await depositWrite.writeAsync();
-      } else {
-        depositWrite.write?.();
-      }
-      setActionMessage('Депозит отправлен. Подождите подтверждение.');
-    } catch (error) {
-      setActionMessage(error instanceof Error ? error.message : 'Ошибка депозита.');
-    }
-  }
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-6">
-      <div className="mx-auto max-w-6xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-4xl font-semibold text-slate-900">Assets & Actions</h1>
-            <p className="mt-2 text-sm text-slate-600">Подключите кошелек, смотри баланс GovernanceToken, делай swap и депозиции в vault.</p>
-          </div>
-          <div className="flex flex-col gap-3 sm:items-end">
-            <ConnectButton />
-            <Link href="/" className="text-sm font-medium text-blue-600 hover:text-blue-800">На главную</Link>
-          </div>
-        </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
+      <div className="max-w-4xl mx-auto border-b border-slate-800 pb-6 mb-8">
+        <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+          RWA Asset Tokenization Factory
+        </h1>
+        <p className="text-slate-400 text-sm mt-1">Deploy fractionalized real estate properties or commodity-backed ERC-20 smart tokens.</p>
+      </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
-          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-            <h2 className="text-xl font-semibold text-slate-900">Deployed Tokens</h2>
-            {FACTORY_ADDRESS ? (
-              deployedTokens.length > 0 ? (
-                <ul className="mt-4 space-y-3">
-                  {deployedTokens.map((tokenAddress) => (
-                    <li key={tokenAddress} className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="text-sm text-slate-500">Token address</div>
-                      <div className="mt-1 break-all text-sm font-medium text-slate-900">{tokenAddress}</div>
-                    </li>
+      <div className="max-w-4xl mx-auto space-y-8">
+        {isConnected ? (
+          <form onSubmit={handleDeploy} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4 md:space-y-0 md:flex md:gap-4 md:items-center">
+            <div className="flex-1">
+              <input 
+                type="text" 
+                placeholder="Asset Name (e.g. Almaty Premium Estate)" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition"
+              />
+            </div>
+            <div className="w-full md:w-48">
+              <input 
+                type="text" 
+                placeholder="Symbol (e.g. APREM)" 
+                value={symbol} 
+                onChange={(e) => setSymbol(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition"
+              />
+            </div>
+            <button 
+              type="submit" 
+              disabled={isPending} 
+              className="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3 rounded-xl transition text-sm shadow-md shadow-blue-600/10 disabled:opacity-50 whitespace-nowrap"
+            >
+              {isPending ? 'Deploying...' : 'Deploy RWA Token'}
+            </button>
+          </form>
+        ) : (
+          <p className="text-amber-400/80 text-sm bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl">
+            ⚠️ Please connect your Web3 wallet on the dashboard page to authorization token deployment.
+          </p>
+        )}
+
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+          <h2 className="text-lg font-bold text-slate-200 mb-4">Tracked Network RWA Tokens</h2>
+          {deployedTokens && deployedTokens.length > 0 ? (
+            <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/50">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-950 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                    <th className="p-4 w-12">#</th>
+                    <th className="p-4">Deployed Smart Contract Address</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800 text-sm font-mono text-slate-300">
+                  {deployedTokens.map((token, idx) => (
+                    <tr key={idx} className="hover:bg-slate-900/40 transition">
+                      <td className="p-4 text-slate-500 font-sans">{idx + 1}</td>
+                      <td className="p-4 text-blue-400 hover:underline cursor-pointer select-all">{token}</td>
+                    </tr>
                   ))}
-                </ul>
-              ) : (
-                <p className="mt-4 text-sm text-slate-600">Токенов ещё нет. Сначала задеплой через Factory.</p>
-              )
-            ) : (
-              <p className="mt-4 text-sm text-slate-600">Укажите адрес фабрики в <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_FACTORY_ADDRESS</code>.</p>
-            )}
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-            <h2 className="text-xl font-semibold text-slate-900">GovernanceToken balance</h2>
-            {isConnected ? (
-              governanceTokenAddress ? (
-                <div className="mt-4 space-y-4">
-                  <div className="rounded-2xl bg-white p-4">
-                    <div className="text-sm text-slate-500">Wallet</div>
-                    <div className="mt-1 text-sm font-medium text-slate-900 break-all">{address}</div>
-                  </div>
-                  <div className="rounded-2xl bg-white p-4">
-                    <div className="text-sm text-slate-500">Token</div>
-                    <div className="mt-1 text-sm font-medium text-slate-900 break-all">{governanceTokenAddress}</div>
-                  </div>
-                  <div className="rounded-2xl bg-white p-4">
-                    <div className="text-sm text-slate-500">Balance</div>
-                    <div className="mt-1 text-lg font-semibold text-slate-900">
-                      {balanceRead.isLoading ? 'Загрузка…' : `${balanceRead.data?.formatted ?? '0'} ${balanceRead.data?.symbol ?? ''}`}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-4 text-sm text-slate-600">Укажите адрес GovernanceToken в <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_GOVERNANCE_TOKEN_ADDRESS</code> или создайте токен через Factory.</p>
-              )
-            ) : (
-              <p className="mt-4 text-sm text-slate-600">Подключите кошелек, чтобы увидеть баланс.</p>
-            )}
-          </section>
-        </div>
-
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.9fr]">
-          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-            <h2 className="text-xl font-semibold text-slate-900">Swap</h2>
-            <div className="mt-4 space-y-4">
-              <div className="grid gap-3">
-                <label className="text-sm font-medium text-slate-700">Amount</label>
-                <input
-                  type="text"
-                  value={swapAmount}
-                  onChange={(event) => setSwapAmount(event.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500"
-                />
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${swapDirection === '0to1' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'}`}
-                  onClick={() => setSwapDirection('0to1')}
-                >
-                  Token0 → Token1
-                </button>
-                <button
-                  type="button"
-                  className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${swapDirection === '1to0' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'}`}
-                  onClick={() => setSwapDirection('1to0')}
-                >
-                  Token1 → Token0
-                </button>
-              </div>
-              <button
-                type="button"
-                disabled={isSwapDisabled}
-                onClick={handleSwap}
-                className="inline-flex w-full items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
-                {swapWrite.isLoading ? 'Отправка...' : 'Swap'}
-              </button>
-              {prepareSwap.error && <p className="text-sm text-rose-600">{prepareSwap.error.message}</p>}
-              {swapWrite.error && <p className="text-sm text-rose-600">{swapWrite.error.message}</p>}
+                </tbody>
+              </table>
             </div>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-            <h2 className="text-xl font-semibold text-slate-900">Deposit to Vault</h2>
-            <div className="mt-4 space-y-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-sm text-slate-500">Vault address</div>
-                <div className="mt-1 break-all text-sm font-medium text-slate-900">{VAULT_ADDRESS ?? 'Не задан'}</div>
-              </div>
-              <div className="grid gap-3">
-                <label className="text-sm font-medium text-slate-700">Deposit amount</label>
-                <input
-                  type="text"
-                  value={depositAmount}
-                  onChange={(event) => setDepositAmount(event.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500"
-                />
-              </div>
-              <button
-                type="button"
-                disabled={isDepositDisabled}
-                onClick={handleDeposit}
-                className="inline-flex w-full items-center justify-center rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
-                {depositWrite.isLoading ? 'Отправка...' : 'Deposit to Vault'}
-              </button>
-              {prepareDeposit.error && <p className="text-sm text-rose-600">{prepareDeposit.error.message}</p>}
-              {depositWrite.error && <p className="text-sm text-rose-600">{depositWrite.error.message}</p>}
-            </div>
-          </section>
+          ) : (
+            <p className="text-sm text-slate-500 bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+              No custom RWA asset contracts have been initialized by this factory yet.
+            </p>
+          )}
         </div>
-
-        {actionMessage ? <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{actionMessage}</div> : null}
       </div>
     </div>
   );

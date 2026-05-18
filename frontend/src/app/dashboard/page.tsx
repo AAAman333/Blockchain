@@ -1,401 +1,217 @@
 ﻿'use client';
 
-import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import {
-  useAccount,
-  useBalance,
-  useBlockNumber,
-  useContractRead,
-  useContractReads,
-  usePrepareContractWrite,
-  useContractWrite,
-} from 'wagmi';
-import type { Address } from 'viem';
-import { governanceTokenAbi, governorAbi } from '@/lib/abis';
+import { useAccount, useReadContract, useWriteContract } from 'wagmi';
+import { formatUnits } from 'viem';
+import { governanceTokenAbi, governorAbi, vaultAbi, ammAbi } from '../../abi';
 
-const GOVERNANCE_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_GOVERNANCE_TOKEN_ADDRESS as Address | undefined;
-const GOVERNOR_ADDRESS = process.env.NEXT_PUBLIC_GOVERNOR_ADDRESS as Address | undefined;
-const SUBGRAPH_URL = process.env.NEXT_PUBLIC_SUBGRAPH_URL;
+const GOV_TOKEN = process.env.NEXT_PUBLIC_GOVERNANCE_TOKEN_ADDRESS as `0x${string}`;
+const VAULT = process.env.NEXT_PUBLIC_VAULT_ADDRESS as `0x${string}`;
+const AMM = process.env.NEXT_PUBLIC_AMM_ADDRESS as `0x${string}`;
+const GOVERNOR = process.env.NEXT_PUBLIC_GOVERNOR_ADDRESS as `0x${string}`;
 
-interface SubgraphProposal {
-  id: string;
-  proposalId: string;
-  proposer: string;
-  description?: string | null;
-  startBlock: string;
-  endBlock: string;
-  executed: boolean;
-}
-
-type ProposalView = SubgraphProposal & {
-  onChainState?: number;
-};
-
-const proposalStateLabels = [
-  'Pending',
-  'Active',
-  'Canceled',
-  'Defeated',
-  'Succeeded',
-  'Queued',
-  'Expired',
-  'Executed',
-] as const;
-
-const queryProposals = 
-  query Proposals {
-    proposals(first: 50, orderBy: createdAt, orderDirection: desc) {
-      id
-      proposalId
-      proposer
-      description
-      startBlock
-      endBlock
-      executed
-    }
-  }
-;
-
-function formatAddress(value: string): string {
-  return ${value.slice(0, 6)}...;
-}
-
-function formatAmount(value: bigint | undefined): string {
-  return value?.toString() ?? '0';
-}
+const PROPOSAL_STATES = [
+  'Pending', 
+  'Active', 
+  'Canceled', 
+  'Defeated', 
+  'Succeeded', 
+  'Queued', 
+  'Expired', 
+  'Executed'
+];
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
-  const [proposals, setProposals] = useState<SubgraphProposal[]>([]);
-  const [loadingProposals, setLoadingProposals] = useState(false);
-  const [proposalError, setProposalError] = useState<string | null>(null);
-  const [voteRequest, setVoteRequest] = useState<{ proposalId: string; support: number } | null>(null);
+  const { writeContract, isPending } = useWriteContract();
 
-  const balance = useBalance({
-    address: address as Address,
-    token: GOVERNANCE_TOKEN_ADDRESS,
-    watch: true,
-    enabled: isConnected && Boolean(address && GOVERNANCE_TOKEN_ADDRESS),
+  const [swapAmount, setSwapAmount] = useState('');
+  const [depositAmount, setDepositAmount] = useState('');
+  const [proposalId, setProposalId] = useState('');
+  const [supportChoice, setSupportChoice] = useState('1');
+
+  const { data: balance, refetch: refetchBal } = useReadContract({
+    abi: governanceTokenAbi,
+    address: GOV_TOKEN,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address }
   });
 
-  const votes = useContractRead({
-    address: GOVERNANCE_TOKEN_ADDRESS,
+  const { data: votes, refetch: refetchVotes } = useReadContract({
     abi: governanceTokenAbi,
+    address: GOV_TOKEN,
     functionName: 'getVotes',
-    args: [address as Address],
-    watch: true,
-    enabled: isConnected && Boolean(address && GOVERNANCE_TOKEN_ADDRESS),
+    args: address ? [address] : undefined,
+    query: { enabled: !!address }
   });
 
-  const delegate = useContractRead({
-    address: GOVERNANCE_TOKEN_ADDRESS,
+  const { data: delegatee, refetch: refetchDel } = useReadContract({
     abi: governanceTokenAbi,
+    address: GOV_TOKEN,
     functionName: 'delegates',
-    args: [address as Address],
-    watch: true,
-    enabled: isConnected && Boolean(address && GOVERNANCE_TOKEN_ADDRESS),
+    args: address ? [address] : undefined,
+    query: { enabled: !!address }
   });
 
-  const blockNumber = useBlockNumber({ watch: true });
-
-  const stateReads = useContractReads({
-    contracts: proposals.map((proposal) => ({
-      address: GOVERNOR_ADDRESS,
-      abi: governorAbi,
-      functionName: 'state' as const,
-      args: [BigInt(proposal.proposalId)],
-    })),
-    enabled: Boolean(GOVERNOR_ADDRESS && proposals.length > 0),
-  });
-
-  const prepareVote = usePrepareContractWrite({
-    address: GOVERNOR_ADDRESS,
+  const { data: proposalStateRaw, error: stateError } = useReadContract({
     abi: governorAbi,
-    functionName: 'castVote',
-    args: voteRequest ? [BigInt(voteRequest.proposalId), voteRequest.support] : undefined,
-    enabled: Boolean(GOVERNOR_ADDRESS && voteRequest),
+    address: GOVERNOR,
+    functionName: 'state',
+    args: proposalId ? [BigInt(proposalId)] : undefined,
+    query: { enabled: !!proposalId && /^\d+$/.test(proposalId) }
   });
 
-  const voteWrite = useContractWrite(prepareVote.config);
-
-  useEffect(() => {
-    if (voteRequest && prepareVote.isSuccess && voteWrite.write) {
-      voteWrite.write();
-      setVoteRequest(null);
-    }
-  }, [voteRequest, prepareVote.isSuccess, voteWrite.write]);
-
-  useEffect(() => {
-    if (!SUBGRAPH_URL) {
-      setProposalError('Укажите NEXT_PUBLIC_SUBGRAPH_URL после деплоя сабграфа.');
-      setLoadingProposals(false);
-      return;
-    }
-
-    async function loadProposals() {
-      setLoadingProposals(true);
-      setProposalError(null);
-
-      try {
-        const response = await fetch(SUBGRAPH_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: queryProposals }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || result.errors) {
-          throw new Error(result.errors?.[0]?.message ?? 'Ошибка загрузки предложений');
-        }
-
-        setProposals(result.data?.proposals ?? []);
-      } catch (error) {
-        setProposalError(error instanceof Error ? error.message : 'Ошибка загрузки предложений');
-      } finally {
-        setLoadingProposals(false);
+  const handleSelfDelegate = () => {
+    if (!address) return;
+    writeContract({
+      abi: governanceTokenAbi,
+      address: GOV_TOKEN,
+      functionName: 'delegate',
+      args: [address],
+    }, {
+      onSuccess: () => {
+        setTimeout(() => { refetchVotes(); refetchDel(); }, 5000);
       }
-    }
+    });
+  };
 
-    loadProposals();
-  }, []);
+  const handleCreateProposal = () => {
+    if (!address) return;
 
-  const proposalsWithState: ProposalView[] = useMemo(
-    () =>
-      proposals.map((proposal, index) => {
-        const rawState = stateReads.data?.[index]?.result as number | bigint | undefined;
-        const onChainState = rawState === undefined ? undefined : typeof rawState === 'bigint' ? Number(rawState) : rawState;
-        return {
-          ...proposal,
-          onChainState,
-        };
-      }),
-    [proposals, stateReads.data],
-  );
+    const extendedGovernorAbi = [
+      {
+        name: 'propose',
+        type: 'function',
+        stateMutability: 'nonpayable',
+        inputs: [
+          { name: 'targets', type: 'address[]' },
+          { name: 'values', type: 'uint256[]' },
+          { name: 'calldatas', type: 'bytes[]' },
+          { name: 'description', type: 'string' }
+        ],
+        outputs: [{ name: '', type: 'uint256' }]
+      }
+    ] as const;
 
-  const activeProposals = proposalsWithState.filter(
-    (proposal) => proposal.onChainState === 0 || proposal.onChainState === 1 || proposal.onChainState === 5,
-  );
-  const executedProposals = proposalsWithState.filter(
-    (proposal) => proposal.onChainState === 7 || proposal.executed,
-  );
-  const closedProposals = proposalsWithState.filter(
-    (proposal) =>
-      proposal.onChainState !== 0 &&
-      proposal.onChainState !== 1 &&
-      proposal.onChainState !== 5 &&
-      proposal.onChainState !== 7 &&
-      !proposal.executed,
-  );
+    writeContract({
+      abi: extendedGovernorAbi,
+      address: GOVERNOR,
+      functionName: 'propose',
+      args: [[GOVERNOR], [0n], ['0x'], `Test Proposal ${Date.now()}`],
+    });
+  };
 
-  const voteInProgress = voteWrite.isLoading || prepareVote.isLoading;
+  const handleDeposit = () => {
+    if (!depositAmount) return;
+    writeContract({
+      abi: vaultAbi,
+      address: VAULT,
+      functionName: 'deposit',
+      args: [BigInt(depositAmount), address!],
+    });
+  };
 
-  function handleVote(proposalId: string, support: number) {
-    setProposalError(null);
-    setVoteRequest({ proposalId, support });
-  }
+  const handleVote = () => {
+    if (!proposalId) return;
+    writeContract({
+      abi: governorAbi,
+      address: GOVERNOR,
+      functionName: 'castVote',
+      args: [BigInt(proposalId), Number(supportChoice)],
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-6 py-12">
-      <div className="mx-auto max-w-6xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-4xl font-semibold text-slate-900">Governance Dashboard</h1>
-            <p className="mt-2 text-sm text-slate-600">
-              Управляй голосами GovernanceToken и следи за предложениями из сабграфа.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:items-end">
-            <ConnectButton />
-            <Link href="/" className="text-sm font-medium text-blue-600 hover:text-blue-800">
-              На главную
-            </Link>
-          </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center border-b border-slate-800 pb-6 mb-8">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+            RWA Investor Dashboard
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">Manage assets, interact with AMM pools, and participate in DAO governance.</p>
         </div>
-
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-            <h2 className="text-xl font-semibold text-slate-900">Voting Power</h2>
-            <div className="mt-4 space-y-4">
-              <div className="rounded-2xl bg-white p-4">
-                <div className="text-sm text-slate-500">Wallet</div>
-                <div className="mt-1 break-all text-sm font-medium text-slate-900">{address ?? 'Не подключено'}</div>
-              </div>
-              <div className="rounded-2xl bg-white p-4">
-                <div className="text-sm text-slate-500">GovernanceToken balance</div>
-                <div className="mt-1 text-lg font-semibold text-slate-900">
-                  {isConnected
-                    ? balance.isLoading
-                      ? 'Загрузка…'
-                      : ${balance.data?.formatted ?? '0'} 
-                    : 'Подключите кошелек'}
-                </div>
-              </div>
-              <div className="rounded-2xl bg-white p-4">
-                <div className="text-sm text-slate-500">Voting power</div>
-                <div className="mt-1 text-lg font-semibold text-slate-900">
-                  {isConnected ? (votes.isLoading ? 'Загрузка…' : formatAmount(votes.data as bigint | undefined)) : 'Подключите кошелек'}
-                </div>
-              </div>
-              <div className="rounded-2xl bg-white p-4">
-                <div className="text-sm text-slate-500">Delegated to</div>
-                <div className="mt-1 text-sm font-medium text-slate-900">
-                  {isConnected
-                    ? delegate.isLoading
-                      ? 'Загрузка…'
-                      : delegate.data
-                      ? formatAddress(delegate.data.toString())
-                      : 'Не делегировано'
-                    : 'Подключите кошелек'}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-            <h2 className="text-xl font-semibold text-slate-900">Subgraph status</h2>
-            <div className="mt-4 space-y-3">
-              <div className="rounded-2xl bg-white p-4">
-                <div className="text-sm text-slate-500">Subgraph URL</div>
-                <div className="mt-1 break-all text-sm font-medium text-slate-900">{SUBGRAPH_URL ?? 'Не задана'}</div>
-              </div>
-              <div className="rounded-2xl bg-white p-4">
-                <div className="text-sm text-slate-500">Current block</div>
-                <div className="mt-1 text-lg font-semibold text-slate-900">{blockNumber.data ?? 'Не найден'}</div>
-              </div>
-              <div className="rounded-2xl bg-white p-4">
-                <div className="text-sm text-slate-500">Governor contract</div>
-                <div className="mt-1 break-all text-sm font-medium text-slate-900">{GOVERNOR_ADDRESS ?? 'Установите NEXT_PUBLIC_GOVERNOR_ADDRESS'}</div>
-              </div>
-              {proposalError && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{proposalError}</div>
-              )}
-              {voteWrite.isError && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                  Ошибка голосования. Повторите попытку.
-                </div>
-              )}
-              {voteInProgress && (
-                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">Транзакция голосования ожидает подтверждения...</div>
-              )}
-            </div>
-          </section>
-        </div>
-
-        <div className="mt-8 space-y-6">
-          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">Active proposals</h2>
-                <p className="mt-1 text-sm text-slate-600">Текущие голосования из сабграфа.</p>
-              </div>
-              <div className="text-sm font-medium text-slate-700">{activeProposals.length} активных</div>
-            </div>
-
-            {loadingProposals ? (
-              <p className="mt-4 text-sm text-slate-600">Загрузка предложений…</p>
-            ) : activeProposals.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-600">Нет активных предложений.</p>
-            ) : (
-              <ul className="mt-4 space-y-4">
-                {activeProposals.map((proposal) => (
-                  <li key={proposal.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <div className="text-sm text-slate-500">Proposal #{proposal.proposalId}</div>
-                        <div className="mt-1 text-sm font-medium text-slate-900">{proposal.description ?? 'Без описания'}</div>
-                      </div>
-                      <div className="rounded-2xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-800">
-                        {proposal.onChainState !== undefined ? proposalStateLabels[proposal.onChainState] ?? State  : proposal.executed ? 'Executed' : 'Unknown'}
-                      </div>
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-                        onClick={() => handleVote(proposal.proposalId, 1)}
-                        disabled={!isConnected || !voteWrite.write}
-                      >
-                        Vote For
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
-                        onClick={() => handleVote(proposal.proposalId, 0)}
-                        disabled={!isConnected || !voteWrite.write}
-                      >
-                        Vote Against
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-2xl bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
-                        onClick={() => handleVote(proposal.proposalId, 2)}
-                        disabled={!isConnected || !voteWrite.write}
-                      >
-                        Abstain
-                      </button>
-                    </div>
-                    <p className="mt-3 text-sm text-slate-500">Proposer: {formatAddress(proposal.proposer)}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">Executed proposals</h2>
-                <p className="mt-1 text-sm text-slate-600">Предложения, выполненные через Governor.</p>
-              </div>
-              <div className="text-sm font-medium text-slate-700">{executedProposals.length} выполнено</div>
-            </div>
-
-            {loadingProposals ? (
-              <p className="mt-4 text-sm text-slate-600">Загрузка предложений…</p>
-            ) : executedProposals.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-600">Нет исполненных предложений.</p>
-            ) : (
-              <ul className="mt-4 space-y-4">
-                {executedProposals.map((proposal) => (
-                  <li key={proposal.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <div className="text-sm text-slate-500">Proposal #{proposal.proposalId}</div>
-                        <div className="mt-1 text-sm font-medium text-slate-900">{proposal.description ?? 'Без описания'}</div>
-                      </div>
-                      <div className="rounded-2xl bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">Executed</div>
-                    </div>
-                    <div className="mt-3 text-sm text-slate-500">Proposer: {formatAddress(proposal.proposer)}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          {closedProposals.length > 0 ? (
-            <section className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-              <h2 className="text-xl font-semibold text-slate-900">Closed proposals</h2>
-              <p className="mt-1 text-sm text-slate-600">Предложения, завершённые без выполнения.</p>
-              <ul className="mt-4 space-y-4">
-                {closedProposals.map((proposal) => (
-                  <li key={proposal.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <div className="text-sm text-slate-500">Proposal #{proposal.proposalId}</div>
-                        <div className="mt-1 text-sm font-medium text-slate-900">{proposal.description ?? 'Без описания'}</div>
-                      </div>
-                      <div className="rounded-2xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-800">Closed</div>
-                    </div>
-                    <div className="mt-3 text-sm text-slate-500">Proposer: {formatAddress(proposal.proposer)}</div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
+        <div className="bg-slate-900 p-2 rounded-xl border border-slate-800 shadow-xl">
+          <ConnectButton />
         </div>
       </div>
+
+      {isConnected && address ? (
+        <div className="max-w-7xl mx-auto space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md">
+              <h3 className="text-sm font-semibold text-slate-400 uppercase">Governance Balance</h3>
+              <p className="text-3xl font-bold mt-2 text-blue-400">{balance ? Number(formatUnits(balance, 18)).toLocaleString() : '0'} PROT</p>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md">
+              <h3 className="text-sm font-semibold text-slate-400 uppercase">Current Voting Power</h3>
+              <p className="text-3xl font-bold mt-2 text-emerald-400">{votes ? Number(formatUnits(votes, 18)).toLocaleString() : '0'}</p>
+              {(!votes || votes === 0n) && (
+                <button onClick={handleSelfDelegate} className="mt-3 w-full bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-300 text-xs py-1.5 rounded-lg transition">
+                  ⚡ Activate Voting Power
+                </button>
+              )}
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md">
+              <h3 className="text-sm font-semibold text-slate-400 uppercase">Delegated To</h3>
+              <p className="text-sm font-mono mt-3 text-slate-300 bg-slate-950 p-2 rounded border border-slate-800 truncate">
+                {delegatee && delegatee !== '0x0000000000000000000000000000000000000000' ? delegatee : 'Nobody'}
+              </p>
+            </div>
+          </div>
+
+          <h2 className="text-xl font-bold border-b border-slate-800 pb-2 mt-12 text-slate-300">Protocol Interactions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Card 1 */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl">
+              <div>
+                <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-4 text-blue-400 font-bold">1</div>
+                <h3 className="text-lg font-bold text-slate-200">Create Test Proposal</h3>
+                <p className="text-xs text-slate-400 mt-1 mb-4">Generate a brand new live testing proposal directly on the blockchain ledger infrastructure.</p>
+              </div>
+              <button onClick={handleCreateProposal} disabled={isPending} className="mt-6 w-full bg-gradient-to-r from-blue-600 to-indigo-600 py-3 rounded-xl transition text-sm font-semibold">
+                ➕ Create Test Proposal
+              </button>
+            </div>
+
+            {/* Card 2 */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl">
+              <div>
+                <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-4 text-emerald-400 font-bold">2</div>
+                <h3 className="text-lg font-bold text-slate-200">Yield Investment Vault</h3>
+                <p className="text-xs text-slate-400 mt-1 mb-4">Deposit your tokenized real-world assets into the smart vault.</p>
+                <input type="number" placeholder="Amount in wei" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200" />
+              </div>
+              <button onClick={handleDeposit} disabled={isPending} className="mt-6 w-full bg-emerald-600 py-3 rounded-xl transition text-sm font-semibold">
+                Deposit to Vault
+              </button>
+            </div>
+
+            {/* Card 3 */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl">
+              <div>
+                <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4 text-purple-400 font-bold">3</div>
+                <h3 className="text-lg font-bold text-slate-200">DAO Governance voting</h3>
+                <input type="text" placeholder="Proposal ID" value={proposalId} onChange={(e) => setProposalId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 mb-3" />
+                <select value={supportChoice} onChange={(e) => setSupportChoice(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-300">
+                  <option value="0">Against</option>
+                  <option value="1">For</option>
+                  <option value="2">Abstain</option>
+                </select>
+              </div>
+              <button onClick={handleVote} disabled={isPending} className="mt-6 w-full bg-purple-600 py-3 rounded-xl transition text-sm font-semibold">
+                Submit DAO Vote
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="max-w-md mx-auto text-center mt-24 bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl">
+          <h2 className="text-xl font-bold text-slate-200">Connect Your Web3 Wallet</h2>
+          <div className="flex justify-center mt-6"><ConnectButton /></div>
+        </div>
+      )}
     </div>
   );
 }

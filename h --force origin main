@@ -1,0 +1,10 @@
+[33mb76f189[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m feat: subgraphs, ci
+[33mad215cf[m chore: update subgraph, frontend dashboard, slither config
+[33m9e08029[m Merge remote branch main into local main without force
+[33m6a7143c[m new
+[33m9eb3a93[m new
+[33m68e8410[m  finalize deploy script and sync remappings
+[33mc77ade6[m test: fix treasury balance in governance flow
+[33me68ad6e[m fix(build): resolve compilation errors and update remappings
+[33mee0aa8c[m fix(amm): enforce SafeERC20 and resolve compiler warnings
+[33m4819f9b[m my work

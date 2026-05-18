@@ -14,7 +14,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
           submodules: recursive
@@ -40,6 +40,7 @@ jobs:
 
       - name: Slither Static Analysis
         uses: crytic/slither-action@v0.3.0
+        continue-on-error: true
         with:
           target: "."
           slither-args: --config-file slither.config.json

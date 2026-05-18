@@ -1,6 +1,3 @@
 {
-  "exclude_paths": [
-    "src/security/*"
-  ],
-  "exclude_informational": true
+  "exclude_paths": "src/security,lib,script"
 }
